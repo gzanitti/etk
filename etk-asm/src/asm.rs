@@ -177,6 +177,81 @@ impl From<Vec<u8>> for RawOp {
     }
 }
 
+/// Container introduced in EOF to provide separation of code and data
+#[derive(Debug)]
+pub struct EOFContainer {
+    header: EOFHeader,
+    body: Vec<EOFBody>,
+}
+
+/// Header of EOF container containing meta-data
+#[derive(Debug)]
+pub struct EOFHeader {
+    /// EOF prefix
+    magic: u16,
+
+    /// EOF version
+    version: u8,
+
+    /// kind marker for types size section
+    kind_types: u8,
+
+    /// 16-bit unsigned big-endian integer denoting the length of the type section content
+    types_size: u16,
+
+    /// kind marker for code size section
+    kind_code: u8,
+
+    /// 16-bit unsigned big-endian integer denoting the number of the code sections
+    num_code_sections: u16,
+
+    /// 16-bit unsigned big-endian integer denoting the length of the code section content
+    code_size: u16,
+
+    /// kind marker for container size section
+    kind_container: u8,
+
+    /// 16-bit unsigned big-endian integer denoting the number of the container sections
+    num_container_sections: u16,
+
+    /// 16-bit unsigned big-endian integer denoting the length of the container section content
+    container_size: u16,
+
+    /// kind marker for data size section
+    kind_data: u8,
+
+    /// 16-bit unsigned big-endian integer denoting the length of the data section content
+    data_size: u16,
+
+    /// marks the end of the header
+    terminator: u8,
+}
+
+/// EOF container body containing code and data sections
+#[derive(Debug)]
+pub struct EOFBody {
+    /// stores code section metadata
+    types_section: Vec<u8>,
+
+    /// number of stack elements the code section consumes
+    inputs: u8,
+
+    /// number of stack elements the code section returns or 0x80 for non-returning functions
+    ouputs: u8,
+
+    /// maximum number of elements ever placed onto the stack by the code section
+    max_stack_height: u16,
+
+    /// arbitrary sequence of bytes
+    code_section: Vec<u8>,
+
+    /// arbitrary sequence of bytes
+    container_section: Vec<u8>,
+
+    /// arbitrary sequence of bytes
+    data_section: Vec<u8>,
+}
+
 /// Assembles a series of [`RawOp`] into raw bytes, tracking and resolving macros and labels,
 /// and handling dynamic pushes.
 ///
