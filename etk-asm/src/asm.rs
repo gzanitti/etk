@@ -184,6 +184,15 @@ pub struct EOFContainer {
     body: Vec<EOFBody>,
 }
 
+impl Default for EOFContainer {
+    fn default() -> Self {
+        Self {
+            header: Default::default(),
+            body: Default::default(),
+        }
+    }
+}
+
 /// Header of EOF container containing meta-data
 #[derive(Debug)]
 pub struct EOFHeader {
@@ -193,10 +202,10 @@ pub struct EOFHeader {
     /// EOF version
     version: u8,
 
-    /// kind marker for types size section
+    /// kind marker for EIP-4750 type section header
     kind_types: u8,
 
-    /// 16-bit unsigned big-endian integer denoting the length of the type section content
+    /// 16-bit unsigned big-endian integer denoting the length of the type section content, 4 bytes per code segment
     types_size: u16,
 
     /// kind marker for code size section
@@ -227,6 +236,26 @@ pub struct EOFHeader {
     terminator: u8,
 }
 
+impl Default for EOFHeader {
+    fn default() -> Self {
+        Self {
+            magic: 0xEF00,
+            version: 0x01,
+            kind_types: 0x01,
+            types_size: 0x0004, // 0x0004-0xFFFC
+            kind_code: 0x02,
+            num_code_sections: 0x0001, // 0x0001-0xFFFF
+            code_size: 0x0001,         // 0x0001-0xFFFF
+            kind_container: 0x03,
+            num_container_sections: 0x0001, // 0x0001-0x00FF
+            container_size: 0x0001,         // 0x0001-0xFFFF
+            kind_data: 0x04,
+            data_size: 0x0000, // 0x0000-0xFFFF
+            terminator: 0x00,
+        }
+    }
+}
+
 /// EOF container body containing code and data sections
 #[derive(Debug)]
 pub struct EOFBody {
@@ -250,6 +279,20 @@ pub struct EOFBody {
 
     /// arbitrary sequence of bytes
     data_section: Vec<u8>,
+}
+
+impl Default for EOFBody {
+    fn default() -> Self {
+        Self {
+            types_section: vec![],
+            inputs: 0x00,             // 0x00-0x7F
+            ouputs: 0x00,             // 0x00-0x80
+            max_stack_height: 0x0000, // 0x0000-0x03FF
+            code_section: vec![],
+            container_section: vec![],
+            data_section: vec![],
+        }
+    }
 }
 
 /// Assembles a series of [`RawOp`] into raw bytes, tracking and resolving macros and labels,
@@ -297,6 +340,8 @@ pub struct Assembler {
     /// Labels, in `pending`, that have been referred to (ex. with push) but
     /// have not been declared with an `AbstractOp::Label`.
     undeclared_labels: HashSet<String>,
+
+    eof_container: EOFContainer, // Probably Option<EOFContainer> is a better option
 }
 
 impl Default for Assembler {
@@ -309,6 +354,7 @@ impl Default for Assembler {
             declared_labels: Default::default(),
             declared_macros: Default::default(),
             undeclared_labels: Default::default(),
+            eof_container: Default::default(),
         }
     }
 }
