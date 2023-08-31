@@ -259,9 +259,8 @@ impl Default for EOFHeader {
 /// EOF container body containing code and data sections
 #[derive(Debug)]
 pub struct EOFBody {
-    /// stores code section metadata
-    types_section: Vec<u8>,
-
+    // stores code section metadata
+    //types_section: Vec<u8>,
     /// number of stack elements the code section consumes
     inputs: u8,
 
@@ -284,7 +283,7 @@ pub struct EOFBody {
 impl Default for EOFBody {
     fn default() -> Self {
         Self {
-            types_section: vec![],
+            //types_section: vec![],
             inputs: 0x00,             // 0x00-0x7F
             ouputs: 0x00,             // 0x00-0x80
             max_stack_height: 0x0000, // 0x0000-0x03FF
@@ -341,6 +340,7 @@ pub struct Assembler {
     /// have not been declared with an `AbstractOp::Label`.
     undeclared_labels: HashSet<String>,
 
+    /// EOF Container with meta-data and code/data sections.
     eof_container: EOFContainer, // Probably Option<EOFContainer> is a better option
 }
 
