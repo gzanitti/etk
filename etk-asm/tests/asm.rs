@@ -276,3 +276,17 @@ fn every_op() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[test]
+fn undefined_macro_undefined_label() -> Result<(), Error> {
+    let mut output = Vec::new();
+    let mut ingester = Ingest::new(&mut output);
+    ingester.ingest_file(source(&[
+        "instruction-macro",
+        "undef-macro-undef-label.etk",
+    ]))?;
+
+    //assert_eq!(output, hex!("6000600060006000600060006000"));
+
+    Ok(())
+}
