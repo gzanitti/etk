@@ -313,7 +313,7 @@ impl Assembler {
 
     /// Insert explicilty declared macros and labels, via `AbstractOp`, and implictly declared
     /// macros and labels via usage in `Op`.
-    fn declare_content(&mut self, rop: &RawOp) -> Result<(), Error> {
+    pub fn declare_content(&mut self, rop: &RawOp) -> Result<(), Error> {
         match rop {
             RawOp::Op(AbstractOp::Label(ref label)) => {
                 match self.declared_labels.entry(label.to_owned()) {
@@ -361,7 +361,7 @@ impl Assembler {
     {
         let rop = rop.into();
 
-        self.declare_content(&rop)?;
+        //self.declare_content(&rop)?;
 
         // Expand instruction macros immediately. We do this here because it's the same process
         // regardless if we `push_read` or `push_pending` -- in fact, `expand_macro` pushes each op
@@ -689,15 +689,10 @@ impl Assembler {
                 Ok(Some(self.push_all(m.contents)?))
             }
             _ => {
-                assert_eq!(self.pending_len, Some(0));
-                self.pending_len = None;
-                self.pending.push_back(RawOp::Op(AbstractOp::Macro(
-                    ops::InstructionMacroInvocation {
-                        name: name.to_string(),
-                        parameters: parameters.to_vec(),
-                    },
-                )));
-                Ok(None)
+                return error::UndeclaredExpressionMacro {
+                    name: name.to_owned(),
+                }
+                .fail();
             }
         }
     }

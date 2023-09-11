@@ -96,6 +96,7 @@ mod error {
 
 use crate::asm::{Assembler, RawOp};
 use crate::ast::Node;
+use crate::ops::AbstractOp;
 use crate::parse::parse_asm;
 
 pub use self::error::Error;
@@ -314,6 +315,35 @@ where
         }
     }
 
+    fn inspect_macros_and_labels(&mut self) {
+        if self.sources.is_empty() {
+            panic!("no sources!");
+        }
+
+        let source_zero = &mut self.sources[0];
+
+        // change to explore all sources?
+        let first_asm = match &mut source_zero.scope {
+            Scope::Independent(ref mut a) => a,
+            Scope::Same => panic!("sources[0] must be independent"),
+        };
+
+        source_zero
+            .nodes
+            .clone()
+            .filter(|node| {
+                matches!(
+                    node,
+                    Node::Op(AbstractOp::MacroDefinition(_)) | Node::Op(AbstractOp::Label(_))
+                )
+            })
+            .for_each(|node| {
+                if let Node::Op(op) = node {
+                    first_asm.declare_content(&RawOp::Op(op)).unwrap();
+                }
+            });
+    }
+
     fn write(&mut self, mut op: RawOp) -> Result<(), Error> {
         if self.sources.is_empty() {
             panic!("no sources!");
@@ -415,6 +445,8 @@ where
         let nodes = parse_asm(src)?;
         let partial = self.sources.resolve(path.into(), Scope::independent())?;
         partial.push(nodes);
+
+        self.sources.inspect_macros_and_labels();
 
         while let Some(source) = self.sources.peek() {
             let node = match source.nodes.next() {
@@ -773,5 +805,32 @@ mod tests {
         let err = ingest.ingest(root, &text).unwrap_err();
 
         assert_matches!(err, Error::RecursionLimit { .. });
+    }
+
+    #[test]
+    fn undef_macro_undef_label() {
+        let (_, root) = new_file("");
+
+        let text = format!(
+            r#"
+            %macro revert_if_neq() 
+                push1 revert    # [revert, a != b]
+            %end
+            
+            %revert_if_neq()
+            %revert()
+            "#
+        );
+
+        let mut output = Vec::new();
+        let mut ingest = Ingest::new(&mut output);
+        let err = ingest.ingest(root, &text).unwrap_err();
+
+        assert_matches!(
+            err,
+            Error::Assemble {
+                source: AsmError::UndeclaredExpressionMacro { name, ..}
+            } if name == "revert"
+        );
     }
 }
