@@ -313,7 +313,7 @@ impl Assembler {
 
     /// Insert explicilty declared macros and labels, via `AbstractOp`, and implictly declared
     /// macros and labels via usage in `Op`.
-    pub fn declare_content(&mut self, rop: &RawOp) -> Result<(), Error> {
+    pub fn declare_labels(&mut self, rop: &RawOp) -> Result<(), Error> {
         match rop {
             RawOp::Op(AbstractOp::Label(ref label)) => {
                 match self.declared_labels.entry(label.to_owned()) {
@@ -323,16 +323,6 @@ impl Assembler {
                     hash_map::Entry::Vacant(v) => {
                         v.insert(None);
                         self.undeclared_labels.remove(label);
-                    }
-                }
-            }
-            RawOp::Op(AbstractOp::MacroDefinition(ref defn)) => {
-                match self.declared_macros.entry(defn.name().to_owned()) {
-                    hash_map::Entry::Occupied(_) => {
-                        return error::DuplicateMacro { name: defn.name() }.fail()
-                    }
-                    hash_map::Entry::Vacant(v) => {
-                        v.insert(defn.to_owned());
                     }
                 }
             }
@@ -352,6 +342,25 @@ impl Assembler {
         Ok(())
     }
 
+    /// Insert explicilty declared macros and labels, via `AbstractOp`, and implictly declared
+    /// macros and labels via usage in `Op`.
+    pub fn declare_macros(&mut self, rop: &RawOp) -> Result<(), Error> {
+        match rop {
+            RawOp::Op(AbstractOp::MacroDefinition(ref defn)) => {
+                match self.declared_macros.entry(defn.name().to_owned()) {
+                    hash_map::Entry::Occupied(_) => {
+                        return error::DuplicateMacro { name: defn.name() }.fail()
+                    }
+                    hash_map::Entry::Vacant(v) => {
+                        v.insert(defn.to_owned());
+                    }
+                }
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
     /// Feed a single instruction into the `Assembler`.
     ///
     /// Returns the number of bytes that can be collected with [`Assembler::take`]
@@ -361,7 +370,7 @@ impl Assembler {
     {
         let rop = rop.into();
 
-        //self.declare_content(&rop)?;
+        self.declare_labels(&rop)?;
 
         // Expand instruction macros immediately. We do this here because it's the same process
         // regardless if we `push_read` or `push_pending` -- in fact, `expand_macro` pushes each op

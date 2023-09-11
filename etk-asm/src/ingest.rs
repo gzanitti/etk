@@ -320,28 +320,23 @@ where
             panic!("no sources!");
         }
 
-        let source_zero = &mut self.sources[0];
+        let sources = &mut self.sources;
+        for source in sources {
+            let first_asm = match &mut source.scope {
+                Scope::Independent(ref mut a) => a,
+                Scope::Same => panic!("sources[0] must be independent"),
+            };
 
-        // change to explore all sources?
-        let first_asm = match &mut source_zero.scope {
-            Scope::Independent(ref mut a) => a,
-            Scope::Same => panic!("sources[0] must be independent"),
-        };
-
-        source_zero
-            .nodes
-            .clone()
-            .filter(|node| {
-                matches!(
-                    node,
-                    Node::Op(AbstractOp::MacroDefinition(_)) | Node::Op(AbstractOp::Label(_))
-                )
-            })
-            .for_each(|node| {
-                if let Node::Op(op) = node {
-                    first_asm.declare_content(&RawOp::Op(op)).unwrap();
-                }
-            });
+            source
+                .nodes
+                .clone()
+                .filter(|node| matches!(node, Node::Op(AbstractOp::MacroDefinition(_))))
+                .for_each(|node| {
+                    if let Node::Op(op) = node {
+                        first_asm.declare_macros(&RawOp::Op(op)).unwrap();
+                    }
+                });
+        }
     }
 
     fn write(&mut self, mut op: RawOp) -> Result<(), Error> {
